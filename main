@@ -1,8 +1,14 @@
 import RPi.GPIO as GPIO
 import subprocess
+import requests
+import base64
 import pyttsx3
 from time import sleep
 
+def text_to_speech(text):
+    engine = pyttsx3.init()
+    engine.say(text)
+    engine.runAndWait()
 
 def capture_and_save_image(output_path):
     command = ["libcamera-still", "-o", output_path]
@@ -13,34 +19,48 @@ def capture_and_save_image(output_path):
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
-
-def text_to_speech(text):
-    engine = pyttsx3.init()
-    engine.say(text)
-    engine.runAndWait()
-
-
 GPIO.setmode(GPIO.BCM)
 
 # GPIO Pins for components
 buttonPin = 17
+lightPin = 4
 
 GPIO.setup(buttonPin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(lightPin, GPIO.OUT)
+GPIO.output(lightPin, GPIO.HIGH)
 
+button_pressed = False  # Initialize flag
 desktop_path = "/home/pi/Desktop"
+
 image_filename = "snapshot.jpg"
+
 image_path = f"{desktop_path}/{image_filename}"
 
 try:
     while True:
-        if GPIO.input(buttonPin) == GPIO.LOW:  # Check if button is pressed
+        if GPIO.input(buttonPin) == GPIO.LOW and not button_pressed:  # Check if button is pressed and flag is False
             print("Button pressed!")
+            GPIO.output(lightPin, GPIO.LOW)
             capture_and_save_image(image_path)
-            text_to_speech("Hello, I'm here to show you that I'm fun and say hahahahahahah")
+            button_pressed = True
+            GPIO.output(lightPin, GPIO.HIGH)
 
-            # Reset process state
-            sleep(1)  # Wait for 1 second to allow time for button release
-            while GPIO.input(buttonPin) == GPIO.LOW:  # Wait until button is released
-                sleep(0.1)
+            # api
+            api_url = 'https://server-api-15f65473ff4c.herokuapp.com/text_recognize'
+            with open("/home/pi/Desktop/pythonProject/snap.jpg", "rb") as img_file:
+                h_base64 = base64.b64encode(img_file.read()).decode('utf-8')
+            data = {
+                'images': [h_base64]
+            }
+            response = requests.post(api_url, json=data)
+            result_json = response.json()
+            message = result_json.get('message', '')
+
+            # text to speech
+            text_to_speech(message)
+
+        elif GPIO.input(buttonPin) == GPIO.HIGH and button_pressed:  # Check if button is released and flag is True
+            button_pressed = False
+        sleep(0.1)
 except KeyboardInterrupt:
     GPIO.cleanup()
