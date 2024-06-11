@@ -1,11 +1,20 @@
 import RPi.GPIO as GPIO
+from time import sleep
 import subprocess
-import requests
-import base64
 import pyttsx3
 import requests
 import base64
-from time import sleep
+
+
+GPIO.setmode(GPIO.BCM)
+
+LED_PIN = 17
+BUTTON_PIN = 27
+button_pressed = False
+
+GPIO.setup(LED_PIN, GPIO.OUT)
+GPIO.output(LED_PIN, GPIO.HIGH)
+GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 def text_to_speech(text):
     engine = pyttsx3.init()
@@ -17,58 +26,50 @@ def capture_and_save_image(output_path):
 
     try:
         subprocess.run(command, check=True)
-        print(f"Save: {output_path}")
+        print(f"Save: ")
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
-GPIO.setmode(GPIO.BCM)
-
-# GPIO Pins for components
-buttonPin = 17
-lightPin = 4
-
-GPIO.setup(buttonPin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(lightPin, GPIO.OUT)
-GPIO.output(lightPin, GPIO.HIGH)
-
-button_pressed = False  # Initialize flag
+def button_callback(channel):
+    print("Button was pressed!")
+    GPIO.output(LED_PIN, not GPIO.input(LED_PIN))
 
 try:
     while True:
-        if GPIO.input(buttonPin) == GPIO.LOW and not button_pressed:  # Check if button is pressed and flag is False
-            print("Button pressed!")
-            GPIO.output(lightPin, GPIO.LOW)
-            capture_and_save_image("snap.jpg")
-            button_pressed = True
-            GPIO.output(lightPin, GPIO.HIGH)
+            if GPIO.input(BUTTON_PIN) == GPIO.LOW and not button_pressed:  # Check if button is pressed and flag is False
+                print("Button pressed!")
+                GPIO.output(LED_PIN, GPIO.LOW)
+                capture_and_save_image("snap.jpg")
+                button_pressed = True
+                GPIO.output(LED_PIN, GPIO.HIGH)
 
-            # api
-            api_url = 'https://book-support-server-157be5e1b6a7.herokuapp.com/image-scaner'
+                # api
+                api_url = 'https://book-support-server-157be5e1b6a7.herokuapp.com/image-scaner'
 
-            with open("snap.jpg", "rb") as img_file:
-                h_base64 = base64.b64encode(img_file.read()).decode('utf-8')
+                with open("snap.jpg", "rb") as img_file:
+                    h_base64 = base64.b64encode(img_file.read()).decode('utf-8')
 
-            data = {
-                'image': h_base64
-            }
+                data = {
+                    'image': h_base64
+                }
 
-            response = requests.post(api_url, json=data)
+                response = requests.post(api_url, json=data)
 
-            if response.status_code == 200:
-                response_json = response.json()
-                print(response_json)
-                result_value = response_json.get('result')
-                message = result_value
-                print(result_value)
-            else:
-                message = "Error in convert"
-                print(f'L?i: {response.status_code} - {response.text}')
+                if response.status_code == 200:
+                    response_json = response.json()
+                    print(response_json)
+                    result_value = response_json.get('result')
+                    message = result_value
+                    print(result_value)
+                else:
+                    message = "Error in convert"
+                    print(f'Error: {response.status_code} - {response.text}')
 
-            # text to speech
-            text_to_speech(message)
-
-        elif GPIO.input(buttonPin) == GPIO.HIGH and button_pressed:  # Check if button is released and flag is True
-            button_pressed = False
-        sleep(0.1)
+                # text to speech
+                text_to_speech(message)
+            elif GPIO.input(BUTTON_PIN) == GPIO.HIGH and button_pressed:  # Check if button is released and flag is True
+                button_pressed = False
+            sleep(0.1)
 except KeyboardInterrupt:
     GPIO.cleanup()
+
