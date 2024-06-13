@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #667eea;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+            width: 100%;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            background-color: #5469d4;
+        }
+
+        .register-link {
+            text-align: center;
+        }
+
+        .register-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .register-link a:hover {
+            color: #5469d4;
+        }
+
+        .role-selection {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .role-selection label {
+            font-weight: 600;
+            margin-right: 10px;
+        }
+
+        .role-selection select {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .login-btn-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .custom-login-btn {
+            background-color: #764ba2;
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 14px 30px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .custom-login-btn:hover {
+            background-color: #5d3d7f;
+        }
+
+        .error-message {
+            text-align: center;
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2 id="loginTitle">Login</h2>
+        <div class="role-selection">
+            <label for="roleSelect">Select your role:</label>
+            <select id="roleSelect">
+                <option value="user">User</option>
+                <option value="manager">Manager</option>
+            </select>
+        </div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" required placeholder="Enter your username">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required placeholder="Enter your password">
+            </div>
+            <div class="form-group login-btn-container">
+                <button type="button" class="btn" id="customLoginBtn">Login</button>
+            </div>
+        </form>
+        <div class="register-link">
+            <a href="/signup">Register</a>
+        </div>
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+    </div>
+
+    <script>
+        const customLoginBtn = document.getElementById('customLoginBtn');
+        const roleSelect = document.getElementById('roleSelect');
+        const errorMessage = document.getElementById('errorMessage');
+
+        customLoginBtn.addEventListener('click', () => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const selectedRole = roleSelect.value;
+
+            const data = {
+                username: username,
+                password: password,
+                role: selectedRole
+            };
+
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === 200) {
+                    const now = new Date();
+                    // Thêm 2 giờ cho thời gian hiện tại
+                    const expirationTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+
+                    // Thiết lập cookie với thời gian hết hạn là 2 giờ sau
+                    document.cookie = `user_id=${data.metadata.user_id}; expires=${expirationTime.toUTCString()}; path=/;`;
+                    window.location.href = '/';
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>

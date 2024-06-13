@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text recognise</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            position: relative;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            margin-top: 20px;
+            margin-bottom: 40px;
+        }
+
+        .date-selector {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .date-selector label {
+            margin-right: 10px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        input[type="file"] {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        input[type="file"]::-webkit-file-upload-button {
+            background-color: #667eea;
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        input[type="file"]::-webkit-file-upload-button:hover {
+            background-color: #5469d4;
+        }
+
+        button {
+            background-color: #667eea;
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #5469d4;
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #764ba2;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            max-width: fit-content;
+        }
+
+        .logout-btn:hover {
+            background-color: #5c3d81;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .prediction-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .prediction-item {
+            background-color: #f2f2f2;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .file-name {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .image-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        .prediction-image {
+            max-width: 200px;
+            max-height: 200px;
+            margin: 5px;
+        }
+
+        .prediction-text {
+            text-align: justify;
+            margin-top: 10px;
+            text-justify: inter-word;
+            font-size: 12px;
+        }
+
+        .remove-btn {
+            background-color: #e74c3c;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-bottom: 5px;
+            width: 100px;
+        }
+
+        .remove-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .audio-btn {
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-bottom: 5px;
+            width: 100px;
+        }
+
+        .audio-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <button class="logout-btn" id="logoutBtn">Logout</button>
+    <div class="container">
+        <h2>Text recognise for PDF</h2>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="pdfFile">Select PDF File:</label>
+                <input type="file" id="pdfFile" name="pdfFile" accept=".pdf" required>
+            </div>
+            <button type="submit">Analysis</button>
+        </form>
+    </div>
+
+    <div class="container">
+        <h2>Predicted Files</h2>
+        <div class="date-selector">
+            <label for="dateSelect">Select Date:</label>
+            <select id="dateSelect">
+                <!-- Options will be populated with the date list -->
+            </select>
+        </div>
+        <ul class="prediction-list">
+            <!-- Prediction items will be added here -->
+        </ul>
+    </div>
+
+
+    <script>
+        const uploadForm = document.getElementById('uploadForm');
+
+        uploadForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            const formData = new FormData(uploadForm);
+
+            fetch('/pdf-text-recognise', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('PDF file uploaded successfully!');
+                    uploadForm.reset();
+                    reloadData();
+                } else {
+                    alert('Error uploading PDF file.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while uploading the PDF file.');
+            });
+        });
+
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', () => {
+            document.cookie = "user_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            window.location.href = '/login';
+        });
+
+        // Fetch data from the server
+        fetch('/get-files', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ date: null })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Populate the date select options
+            const dateSelect = document.getElementById('dateSelect');
+            data.metadata.date_list.forEach(date => {
+                const option = document.createElement('option');
+                option.value = date;
+                option.textContent = new Date(date).toLocaleDateString();
+                dateSelect.appendChild(option);
+            });
+
+            // Render the prediction items for the first date
+            renderPredictions(data.metadata.records);
+        })
+        .catch(error => console.error('Error:', error));
+
+        // Event listener for the date select
+        const dateSelect = document.getElementById('dateSelect');
+        dateSelect.addEventListener('change', () => {
+            const selectedDate = new Date(dateSelect.value);
+            fetch('/get-files', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ date: selectedDate })
+            })
+            .then(response => response.json())
+            .then(data => {
+                renderPredictions(data.metadata.records);
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        function reloadData() {
+            fetch('/get-files', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ date: null })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Populate the date select options
+                const dateSelect = document.getElementById('dateSelect');
+                dateSelect.innerHTML = ''; // Xóa các option cũ
+                data.metadata.date_list.forEach(date => {
+                    const option = document.createElement('option');
+                    option.value = date;
+                    option.textContent = new Date(date).toLocaleDateString();
+                    dateSelect.appendChild(option);
+                });
+
+                // Render the prediction items for the current date
+                renderPredictions(data.metadata.records);
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        function removeFile(fileId) {
+            fetch('/remove-file', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: fileId })
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('File removed successfully!');
+                    reloadData(); // Gọi hàm reloadData để cập nhật dữ liệu
+                } else {
+                    alert('Error removing file.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while removing the file.');
+            });
+        }
+
+        let speechSynthesis;
+
+        function speakPrediction(prediction) {
+            if (speechSynthesis && speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+                return;
+            }
+
+            const speech = new SpeechSynthesisUtterance(prediction);
+            speechSynthesis = window.speechSynthesis;
+            speechSynthesis.speak(speech);
+        }
+
+        function renderPredictions(records) {
+            const predictionList = document.querySelector('.prediction-list');
+            predictionList.innerHTML = '';
+
+            records.forEach(record => {
+                const predictionItem = document.createElement('li');
+                predictionItem.classList.add('prediction-item');
+
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = 'Remove';
+                removeBtn.classList.add('remove-btn');
+                removeBtn.addEventListener('click', () => {
+                    removeFile(record.id);
+                });
+
+                const fileNameContainer = document.createElement('div');
+                fileNameContainer.classList.add('file-name');
+                fileNameContainer.textContent = record.file_name;
+
+                const imageContainer = document.createElement('div');
+                imageContainer.classList.add('image-container');
+                record.image_urls.forEach(url => {
+                    const predictionImage = document.createElement('img');
+                    predictionImage.src = url;
+                    predictionImage.alt = 'Prediction Image';
+                    predictionImage.classList.add('prediction-image');
+                    imageContainer.appendChild(predictionImage);
+                });
+
+                const predictionText = document.createElement('div');
+                predictionText.classList.add('prediction-text');
+                const predictionTextContent = record.predictions.join('<br><br>');
+                predictionText.innerHTML = predictionTextContent;
+
+                const audioBtn = document.createElement('button');
+                audioBtn.textContent = '🔊';
+                audioBtn.classList.add('audio-btn');
+                audioBtn.addEventListener('click', () => {
+                    speakPrediction(predictionTextContent);
+                });
+
+                predictionItem.appendChild(fileNameContainer);
+                predictionItem.appendChild(removeBtn);
+                predictionItem.appendChild(imageContainer);
+                predictionItem.appendChild(predictionText);
+                predictionItem.appendChild(audioBtn); // Thêm button hình loa
+
+                predictionList.appendChild(predictionItem);
+            });
+        }
+    </script>
+</body>
+</html>

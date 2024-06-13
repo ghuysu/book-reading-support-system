@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Prediction Viewer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+
+        .container {
+            margin-top: 20px;
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            position: relative; /* Để có thể định vị nút Remove */
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .prediction-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .prediction-item {
+            background-color: #f2f2f2;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            position: relative; /* Để có thể định vị nút Remove */
+        }
+
+        .prediction-image-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .prediction-image {
+            max-width: 200px;
+            max-height: 200px;
+            margin-right: 20px;
+        }
+
+        .prediction-text {
+            flex: 1;
+        }
+
+        .remove-btn {
+            background-color: #e74c3c;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        .remove-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #764ba2;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background-color: #5c3d81;
+        }
+
+        .audio-btn {
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-left: 10px;
+        }
+
+        .audio-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <button class="logout-btn" id="logoutBtn">Logout</button>
+    <div class="container">
+        <h2>Image Prediction Viewer</h2>
+        <div class="form-group">
+            <label for="dateSelect">Select Date:</label>
+            <select id="dateSelect">
+                <!-- Options will be populated with the date list -->
+            </select>
+        </div>
+        <ul class="prediction-list">
+            <!-- Prediction items will be added here -->
+        </ul>
+    </div>
+
+    <script>
+        // Fetch data from the server
+        fetch('/get-request', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ date: null })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Populate the date select options
+            const dateSelect = document.getElementById('dateSelect');
+            data.metadata.date_list.forEach(date => {
+                const option = document.createElement('option');
+                option.value = date;
+                option.textContent = new Date(date).toLocaleDateString();
+                dateSelect.appendChild(option);
+            });
+
+            // Render the prediction items for the first date
+            renderPredictions(data.metadata.records);
+        })
+        .catch(error => console.error('Error:', error));
+
+
+        // Event listener for the date select
+        const dateSelect = document.getElementById('dateSelect');
+        dateSelect.addEventListener('change', () => {
+            const selectedDate = new Date(dateSelect.value);
+            fetch('/get-request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ date: selectedDate })
+            })
+            .then(response => response.json())
+            .then(data => {
+                renderPredictions(data.metadata.records);
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', () => {
+            document.cookie = "user_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            window.location.href = '/login';
+        });
+
+        function removeFile(fileId) {
+            fetch('/remove-file', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: fileId , user_id: 'guest'})
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('File removed successfully!');
+                    reloadData(); // Gọi hàm reloadData để cập nhật dữ liệu
+                } else {
+                    alert('Error removing file.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while removing the file.');
+            });
+        }
+
+        function reloadData() {
+            fetch('/get-request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ date: null })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Populate the date select options
+                const dateSelect = document.getElementById('dateSelect');
+                dateSelect.innerHTML = ''; // Xóa các option cũ
+                data.metadata.date_list.forEach(date => {
+                    const option = document.createElement('option');
+                    option.value = date;
+                    option.textContent = new Date(date).toLocaleDateString();
+                    dateSelect.appendChild(option);
+                });
+
+                // Render the prediction items for the current date
+                renderPredictions(data.metadata.records);
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        let speechSynthesis;
+
+        function speakPrediction(prediction) {
+            if (speechSynthesis && speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+                return;
+            }
+
+            const speech = new SpeechSynthesisUtterance(prediction);
+            speechSynthesis = window.speechSynthesis;
+            speechSynthesis.speak(speech);
+        }
+
+        // Hàm để render prediction items
+        function renderPredictions(records) {
+            const predictionList = document.querySelector('.prediction-list');
+            predictionList.innerHTML = '';
+
+            records.forEach(record => {
+                const predictionItem = document.createElement('li');
+                predictionItem.classList.add('prediction-item');
+
+                const predictionImageContainer = document.createElement('div');
+                predictionImageContainer.classList.add('prediction-image-container');
+
+                record.image_urls.forEach(url => {
+                    const predictionImage = document.createElement('img');
+                    predictionImage.src = url;
+                    predictionImage.alt = 'Prediction Image';
+                    predictionImage.classList.add('prediction-image');
+                    predictionImageContainer.appendChild(predictionImage);
+                });
+
+                const predictionText = document.createElement('div');
+                predictionText.classList.add('prediction-text');
+                predictionText.textContent = record.predictions.join(', ');
+
+                const audioBtn = document.createElement('button');
+                audioBtn.textContent = '🔊';
+                audioBtn.classList.add('audio-btn');
+                audioBtn.addEventListener('click', () => {
+                    speakPrediction(record.predictions.join(', '));
+                });
+
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = 'Remove';
+                removeBtn.classList.add('remove-btn');
+                removeBtn.addEventListener('click', () => {
+                    removeFile(record.id);
+                });
+
+                predictionItem.appendChild(predictionImageContainer);
+                predictionItem.appendChild(predictionText);
+                predictionItem.appendChild(audioBtn); // Thêm button hình loa
+                predictionItem.appendChild(removeBtn);
+
+                predictionList.appendChild(predictionItem);
+            });
+        }
+    </script>
+</body>
+</html>
